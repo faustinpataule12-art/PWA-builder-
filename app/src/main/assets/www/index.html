@@ -11,6 +11,8 @@
    RESET & TOKENS
 ══════════════════════════════════ */
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+button,select,.btn,.bnav,.hbtn,.action-card,.mcard,.fitem,.etool{touch-action:manipulation;-webkit-user-select:none;user-select:none}
+
 :root{
   --bg:#07070e;
   --s1:#0d0d18;
@@ -601,6 +603,7 @@ code{background:var(--s1);padding:2px 7px;border-radius:5px;font-family:var(--mo
         <div class="card-title">⚡ Génération...</div>
         <div class="prog"><div class="prog-fill" id="pbar"></div></div>
         <div class="term" id="conv-term"></div>
+        <div id="step-list" style="margin-top:10px;display:none"></div>
       </div>
     </div>
 
@@ -623,7 +626,14 @@ code{background:var(--s1);padding:2px 7px;border-radius:5px;font-family:var(--mo
   <!-- PAGE : GUIDE -->
   <div class="page" id="p-guide">
 
-    <div class="card">
+    <div class="card" style="margin-bottom:10px">
+  <div class="card-title">⚙️ Préférences</div>
+  <label class="perm-item" style="margin-top:6px">
+    <input type="checkbox" id="pref-quit-confirm" onchange="saveQuitPref(this.checked)">
+    <div><div style="font-weight:700;font-size:13px">Confirmer avant de quitter</div><div style="font-size:11px;color:var(--muted)">Affiche une boîte de dialogue quand vous appuyez sur Retour</div></div>
+  </label>
+</div>
+      <div class="card">
       <div class="card-title">📖 Méthode 1 — Directement dans ce site (recommandé)</div>
       <div class="chip chip-ok" style="margin-bottom:12px"><span class="dot"></span> Vrai APK · Gratuit · Tout dans PWA-APK by NPS.NELSON</div>
       <div class="step">
@@ -1497,21 +1507,49 @@ async function runConversion(){
   termLine(term,`  Suivi en direct : ${runUrl||'(voir onglet Actions du dépôt)'}`,'i');
   bar.style.width='30%';
 
-  // Polling réel du statut du run (toutes les 8s, jusqu'à ~10 min)
+  // ── Polling réel avec étapes détaillées (toutes les 6s, jusqu'à ~12 min)
   let status='queued', conclusion=null;
-  const maxAttempts=75;
+  const maxAttempts=120;
+  const stepList=document.getElementById('step-list');
+  stepList.style.display='block';
+  stepList.innerHTML='<div style="font-size:11px;color:var(--muted);margin-bottom:6px">⏳ Attente des étapes GitHub Actions…</div>';
+  const renderedSteps={};
+
+  function renderStep(s){
+    const icon=s.conclusion==='success'?'✅':s.conclusion==='failure'?'❌':s.conclusion==='skipped'?'⏭️':s.status==='in_progress'?'▶️':'⏳';
+    const dur=s.started_at&&s.completed_at?Math.round((new Date(s.completed_at)-new Date(s.started_at))/1000)+'s':'';
+    const color=s.conclusion==='success'?'var(--green)':s.conclusion==='failure'?'var(--red)':s.status==='in_progress'?'var(--cyan)':'var(--muted)';
+    return `<div id="step-${s.number}" style="display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:7px;margin-bottom:4px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)">
+      <span style="font-size:14px">${icon}</span>
+      <span style="font-size:12px;flex:1;color:${color}">${s.name}</span>
+      ${dur?'<span style="font-size:10px;color:var(--muted)">'+dur+'</span>':''}
+    </div>`;
+  }
+
   for(let i=0;i<maxAttempts;i++){
-    await sleep(8000);
+    await sleep(6000);
     let runResp;
     try{ runResp = await githubApi(`/actions/runs/${runId}`, ghConfig); }
     catch(e){ continue; }
     if(!runResp.ok) continue;
     const run = await runResp.json();
-    if(run.status!==status){
-      status=run.status;
-      termLine(term, status==='in_progress' ? '▶ Compilation en cours sur GitHub Actions...' : `▶ Statut : ${status}`, 'i');
-    }
-    bar.style.width = status==='completed' ? '90%' : (30+i)+'%';
+    status=run.status;
+    bar.style.width = status==='completed' ? '90%' : Math.min(30+i*0.8, 88)+'%';
+
+    // Fetch job steps for live display
+    try{
+      const jobsResp=await githubApi(`/actions/runs/${runId}/jobs`,ghConfig);
+      if(jobsResp.ok){
+        const jobsData=await jobsResp.json();
+        const jobs=jobsData.jobs||[];
+        if(jobs.length){
+          const job=jobs[0];
+          const steps=(job.steps||[]).filter(s=>s.name!=='Set up job'&&s.name!=='Complete job'||s.status!=='queued');
+          stepList.innerHTML='<div style="font-size:11px;color:var(--muted);margin-bottom:8px">🔨 Job: '+job.name+' — '+job.status+'</div>'+steps.map(renderStep).join('');
+        }
+      }
+    }catch(e){}
+
     if(run.status==='completed'){
       conclusion=run.conclusion;
       break;
@@ -1978,6 +2016,14 @@ function toast(msg, type='s'){
   toastT=setTimeout(()=>el.style.opacity='0',2500);
 }
 
+
+// ════════════════════════════════
+// PRÉFÉRENCE CONFIRMATION QUITTER
+// ════════════════════════════════
+function saveQuitPref(checked){
+  localStorage.setItem('nps_quit_confirm', checked?'1':'0');
+  toast(checked ? '✓ Confirmation de sortie activée' : 'Confirmation de sortie désactivée', 's');
+}
 // ════════════════════════════════
 // AUTO-FILL PKG FROM NAME
 // ════════════════════════════════
@@ -1987,6 +2033,12 @@ document.addEventListener('DOMContentLoaded',()=>{
     const v=nameIn.value.toLowerCase().replace(/[^a-z0-9]/g,'').substring(0,20);
     document.getElementById('c-pkg').value='com.nps.'+(v||'myapp');
   });
+
+  // Charger la préférence confirmation quitter
+  try{
+    const qc=document.getElementById('pref-quit-confirm');
+    if(qc) qc.checked = localStorage.getItem('nps_quit_confirm')!=='0';
+  }catch(e){}
 });
 
   // ── BRANCH SELECTOR ──────────────────────────────
