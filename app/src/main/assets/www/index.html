@@ -2117,7 +2117,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   }
   document.addEventListener('click', e => {
     if(!e.target.closest('#branch-wrap'))
-      document.getElementById('branch-drop')?.classList.remove('open');
+      var bd=document.getElementById('branch-drop');
+      if(bd) bd.classList.remove('open');
   });
   
 
@@ -2130,7 +2131,7 @@ function openExternalUrl(url){
   if(typeof AndroidBridge !== 'undefined' && AndroidBridge.openUrl){
     AndroidBridge.openUrl(url);
   } else {
-    openExternalUrl(url);
+    window.open(url, '_blank');
   }
 }
 
