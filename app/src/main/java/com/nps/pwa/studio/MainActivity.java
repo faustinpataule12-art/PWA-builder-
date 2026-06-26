@@ -38,14 +38,25 @@ package com.nps.pwa.studio;
       public void onBackPressed() {
           if (webView.canGoBack()) {
               webView.goBack();
-          } else {
-              new AlertDialog.Builder(this)
-                  .setTitle("Quitter l'application")
-                  .setMessage("Voulez-vous vraiment quitter PWA-APK Studio ?")
-                  .setPositiveButton("Quitter", (d, w) -> finish())
-                  .setNegativeButton("Annuler", null)
-                  .show();
+              return;
           }
+          // Lire la préférence "confirmation avant quitter" depuis localStorage HTML
+          webView.evaluateJavascript(
+              "(function(){ try{ return localStorage.getItem('nps_quit_confirm'); }catch(e){ return null; } })()",
+              value -> {
+                  // value est "null", "\"1\"", "\"0\"" ou null
+                  boolean showConfirm = !"\"0\"".equals(value);
+                  if (showConfirm) {
+                      new AlertDialog.Builder(MainActivity.this)
+                          .setTitle("Quitter l'application")
+                          .setMessage("Voulez-vous vraiment quitter PWA-APK Studio ?")
+                          .setPositiveButton("Quitter", (d, w) -> finish())
+                          .setNegativeButton("Annuler", null)
+                          .show();
+                  } else {
+                      finish();
+                  }
+              }
+          );
       }
   }
-  
