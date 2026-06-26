@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>NPS.PWA Studio</title>
+<title>PWA-APK by NPS.NELSON</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <style>
@@ -284,6 +284,19 @@ code{background:var(--s1);padding:2px 7px;border-radius:5px;font-family:var(--mo
 /* animate */
 @keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .page.active{animation:fadein .2s ease}
+
+  /* ── BRANCH SELECTOR ── */
+  .branch-wrap{position:relative}
+  .branch-inp{cursor:pointer;background:var(--s2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:var(--radius);width:100%;font-size:13px;font-family:var(--font)}
+  .branch-inp:focus{outline:none;border-color:var(--accent)}
+  .branch-drop{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--s3);border:1px solid var(--border);border-radius:var(--radius);z-index:200;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+  .branch-drop.open{display:block}
+  .branch-opt{padding:11px 14px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(34,34,58,.5)}
+  .branch-opt:last-child{border-bottom:none}
+  .branch-opt:hover{background:var(--s2)}
+  .branch-opt.edit-opt{color:var(--accent);font-weight:600}
+  .branch-tag{font-size:10px;background:rgba(124,110,255,.15);color:var(--accent);padding:2px 6px;border-radius:4px;margin-left:auto}
+  
 </style>
 </head>
 <body>
@@ -303,7 +316,7 @@ code{background:var(--s1);padding:2px 7px;border-radius:5px;font-family:var(--mo
   <div class="page active" id="p-home">
     <div class="home-hero">
       <div class="icon">📦</div>
-      <h1>NPS.PWA Studio</h1>
+      <h1>PWA-APK by NPS.NELSON</h1>
       <p>Créez, importez et préparez vos PWA pour la conversion en APK Android</p>
     </div>
 
@@ -517,6 +530,19 @@ code{background:var(--s1);padding:2px 7px;border-radius:5px;font-family:var(--mo
         <input type="text" id="gh-owner" placeholder="nom-utilisateur">
         <input type="text" id="gh-repo" placeholder="nom-du-repo">
       </div>
+
+        <label>Branche GitHub</label>
+        <div class="branch-wrap" id="branch-wrap">
+          <input type="text" class="branch-inp" id="gh-branch" placeholder="🌿 Choisir une branche…" value="main" onclick="openBranchDrop()" readonly>
+          <div class="branch-drop" id="branch-drop">
+            <div class="branch-opt" onclick="setBranch('main')">🌿 main <span class="branch-tag">par défaut</span></div>
+            <div class="branch-opt" onclick="setBranch('principal')">🌿 principal</div>
+            <div class="branch-opt" onclick="setBranch('Nelson')">🌿 Nelson</div>
+            <div class="branch-opt" onclick="setBranch('devel')">🌿 devel</div>
+            <div class="branch-opt" onclick="setBranch('New World')">🌿 New World</div>
+            <div class="branch-opt edit-opt" onclick="editBranchCustom()">📝 Écrire un nom personnalisé</div>
+          </div>
+        </div>
       <label>Personal Access Token (scope "repo" et "workflow")</label>
       <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
       <button class="btn btn-ghost btn-full" style="margin-top:8px" onclick="saveGithubConfig()">💾 Enregistrer (local, cet appareil)</button>
@@ -593,7 +619,7 @@ code{background:var(--s1);padding:2px 7px;border-radius:5px;font-family:var(--mo
 
     <div class="card">
       <div class="card-title">📖 Méthode 1 — Directement dans ce site (recommandé)</div>
-      <div class="chip chip-ok" style="margin-bottom:12px"><span class="dot"></span> Vrai APK · Gratuit · Tout dans NPS.PWA Studio</div>
+      <div class="chip chip-ok" style="margin-bottom:12px"><span class="dot"></span> Vrai APK · Gratuit · Tout dans PWA-APK by NPS.NELSON</div>
       <div class="step">
         <div class="step-n">1</div>
         <div><h4>Hébergez votre PWA</h4><p>Sur GitHub Pages, Netlify, Vercel (gratuit) avec HTTPS</p></div>
@@ -658,7 +684,7 @@ code{background:var(--s1);padding:2px 7px;border-radius:5px;font-family:var(--mo
       <div class="chip chip-ok" style="margin-bottom:12px"><span class="dot"></span> Idéal pour vos projets single-file HTML</div>
       <div class="step">
         <div class="step-n">1</div>
-        <div><h4>Téléchargez le package NPS.PWA Studio</h4><p>Contient le projet Android Studio configuré</p></div>
+        <div><h4>Téléchargez le package PWA-APK by NPS.NELSON</h4><p>Contient le projet Android Studio configuré</p></div>
       </div>
       <div class="step">
         <div class="step-n">2</div>
@@ -778,7 +804,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
       document.getElementById('gh-owner').value = saved.owner||'';
       document.getElementById('gh-repo').value = saved.repo||'';
       document.getElementById('gh-token').value = saved.token||'';
-      document.getElementById('gh-status').textContent = `✓ Configuré : ${saved.owner}/${saved.repo}`;
+      if(saved.branch) document.getElementById('gh-branch').value = saved.branch;
+      document.getElementById('gh-status').textContent = `✓ Configuré : ${saved.owner}/${saved.repo} · ${saved.branch||'main'}`;
     }
   }catch(e){}
 });
@@ -793,8 +820,9 @@ function saveGithubConfig(){
     status.style.color = 'var(--red)';
     return;
   }
-  localStorage.setItem('nps_gh_config', JSON.stringify({owner,repo,token}));
-  status.textContent = `✓ Enregistré : ${owner}/${repo} (token stocké uniquement sur cet appareil)`;
+  const branch = document.getElementById('gh-branch').value.trim() || 'main';
+  localStorage.setItem('nps_gh_config', JSON.stringify({owner,repo,token,branch}));
+  status.textContent = `✓ Enregistré : ${owner}/${repo} · branche "${branch}"`;
   status.style.color = 'var(--green)';
 }
 
@@ -1022,7 +1050,7 @@ function startTemplate(){
   <div class="app">
     <header>
       <h1>🚀 Mon Application</h1>
-      <p>Créée avec NPS.PWA Studio</p>
+      <p>Créée avec PWA-APK by NPS.NELSON</p>
     </header>
     <main>
       <div class="card">
@@ -1078,7 +1106,7 @@ button {
   font-weight: 700;
 }`;
 
-  S.files['app.js']=`// NPS.PWA Studio — app.js
+  S.files['app.js']=`// PWA-APK by NPS.NELSON — app.js
 console.log('App démarrée par NPS.NELSON');
 
 // Exemple de code
@@ -1088,7 +1116,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   S.files['manifest.json']=JSON.stringify({
     name:'Mon Application',short_name:'MonApp',
-    description:'PWA créée avec NPS.PWA Studio by NPS.NELSON',
+    description:'PWA créée avec PWA-APK by NPS.NELSON by NPS.NELSON',
     start_url:'/',scope:'/',display:'standalone',
     theme_color:'#7c6eff',background_color:'#0a0a14',orientation:'any',
     icons:[
@@ -1097,7 +1125,7 @@ document.addEventListener('DOMContentLoaded', () => {
     ]
   },null,2);
 
-  S.files['sw.js']=`// Service Worker — NPS.PWA Studio
+  S.files['sw.js']=`// Service Worker — PWA-APK by NPS.NELSON
 const CACHE = 'nps-pwa-v1';
 const FILES = [
   '/',
@@ -1309,7 +1337,7 @@ async function runConversion(){
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        ref:'principal',
+        ref: (ghConfig.branch||'main'),
         inputs:{
           app_name:name, package_id:pkg, pwa_url:url,
           theme_color:theme, version_name:'1.0.0', min_sdk:sdk,
@@ -1327,7 +1355,7 @@ async function runConversion(){
   if(dispatchResp.status===404){
     termLine(term,'✗ Workflow introuvable (404).','e');
     termLine(term,'  Vérifiez que ".github/workflows/build.yml" existe bien sur la','i');
-    termLine(term,'  branche "principal" de votre dépôt.','i');
+    termLine(term,'  branche "${ghConfig.branch||'main'}" de votre dépôt.','i');
     bar.style.width='100%'; bar.style.background='var(--red)';
     return;
   }
@@ -1634,7 +1662,7 @@ allprojects {
   // build.sh — script automatique
   zip.file('build.sh',
 `#!/bin/bash
-# Script de build automatique — NPS.PWA Studio
+# Script de build automatique — PWA-APK by NPS.NELSON
 # Généré par NPS.NELSON Game Studio
 
 echo "=== Build ${name} APK ==="
@@ -1658,15 +1686,15 @@ echo "=== APK généré dans android/app/build/outputs/apk/ ==="
   // README
   zip.file('README.md',
 `# ${name} — Package Android
-## Généré par NPS.PWA Studio — NPS.NELSON Game Studio
+## Généré par PWA-APK by NPS.NELSON — NPS.NELSON Game Studio
 
 ### Méthode utilisée : ${S.method.toUpperCase()}
 
 ---
 
-## 🚀 Option 1 : NPS.PWA Studio (RECOMMANDÉ — directement dans le site)
+## 🚀 Option 1 : PWA-APK by NPS.NELSON (RECOMMANDÉ — directement dans le site)
 1. Hébergez votre PWA sur GitHub Pages / Netlify (gratuit + HTTPS)
-2. Dans NPS.PWA Studio, page Convertir, connectez votre dépôt GitHub
+2. Dans PWA-APK by NPS.NELSON, page Convertir, connectez votre dépôt GitHub
 3. Entrez votre URL : ${url}
 4. Cliquez "Générer le package Android" — la compilation tourne sur GitHub Actions
 5. Téléchargez l'APK depuis le lien du run affiché dans le site
@@ -1752,7 +1780,7 @@ function openTokenGuide(){
         <p>Le token s'affiche <b>une seule fois</b> (commence par <code>ghp_</code>). Copiez-le immédiatement.</p>
       </div></div>
       <div class="step"><div class="step-n">7</div><div>
-        <h4>Collez-le dans NPS.PWA Studio</h4>
+        <h4>Collez-le dans PWA-APK by NPS.NELSON</h4>
         <p>Page Convertir → carte "🐙 Connexion GitHub" → champ Token → Enregistrer.</p>
       </div></div>
       <div class="info warn" style="margin-top:14px">
@@ -1879,6 +1907,29 @@ document.addEventListener('DOMContentLoaded',()=>{
     document.getElementById('c-pkg').value='com.nps.'+(v||'myapp');
   });
 });
+
+  // ── BRANCH SELECTOR ──────────────────────────────
+  function openBranchDrop(){
+    document.getElementById('branch-drop').classList.add('open');
+  }
+  function setBranch(name){
+    const inp = document.getElementById('gh-branch');
+    inp.value = name; inp.readOnly = true;
+    inp.placeholder = '🌿 Choisir une branche…';
+    document.getElementById('branch-drop').classList.remove('open');
+  }
+  function editBranchCustom(){
+    const inp = document.getElementById('gh-branch');
+    inp.readOnly = false; inp.value = '';
+    inp.placeholder = 'Tapez le nom exact de votre branche…';
+    document.getElementById('branch-drop').classList.remove('open');
+    inp.focus();
+  }
+  document.addEventListener('click', e => {
+    if(!e.target.closest('#branch-wrap'))
+      document.getElementById('branch-drop')?.classList.remove('open');
+  });
+  
 </script>
 </body>
 </html>
