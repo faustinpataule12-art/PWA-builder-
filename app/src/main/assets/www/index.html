@@ -1330,7 +1330,20 @@ async function runConversion(){
   termLine(term,`▶ Package : ${pkg} — Version : 1.0.0 — SDK min : ${sdk}`,'i');
   termLine(term,`▶ Permissions : ${perms.length?perms.join(', '):'aucune'}`,'i');
 
-  termLine(term,'▶ Déclenchement du workflow GitHub Actions...','i');
+  // Push HTML files to repo if WebView mode
+    if(S.method==='webview' && Object.keys(S.files||{}).length>0){
+      try{
+        await pushWebViewFiles(ghConfig, S.files, term);
+        // Give GitHub time to process the commit before triggering workflow
+        await sleep(3000);
+      }catch(e){
+        termLine(term,'✗ Erreur envoi fichiers: '+e.message,'e');
+        bar.style.width='100%'; bar.style.background='var(--red)';
+        return;
+      }
+    }
+
+    termLine(term,'▶ Déclenchement du workflow GitHub Actions...','i');
   let dispatchResp;
   try{
     dispatchResp = await githubApi('/actions/workflows/build.yml/dispatches', ghConfig, {
@@ -1929,6 +1942,120 @@ document.addEventListener('DOMContentLoaded',()=>{
     if(!e.target.closest('#branch-wrap'))
       document.getElementById('branch-drop')?.classList.remove('open');
   });
+  
+
+  // ════════════════════════════════
+  // TÉLÉCHARGEMENT DIRECT APK
+  // ════════════════════════════════
+  async function downloadApkDirect(){
+    const btn = document.getElementById('dlApkBtn');
+    const hint = document.getElementById('dl-hint');
+    const cfg = S.lastConfig;
+    const art = S.lastArtifact;
+    if(!art && !cfg){ toast('Lancez d\'abord une compilation'); return; }
+    const ghConfig = getGithubConfig();
+    if(!ghConfig){ toast('Config GitHub manquante'); return; }
+
+    // If we have a stored artifact, try direct download
+    if(art && art.archive_download_url){
+      if(btn) btn.textContent = '⏳ Téléchargement...';
+      try{
+        const resp = await fetch(art.archive_download_url, {
+          headers:{ 'Authorization':'Bearer '+ghConfig.token },
+          redirect:'follow'
+        });
+        if(resp.ok){
+          const blob = await resp.blob();
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = (cfg?.name||'app') + '-debug.zip';
+          document.body.appendChild(a); a.click();
+          setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 2000);
+          if(btn) btn.textContent = '✅ Téléchargé !';
+          if(hint) hint.textContent = 'ZIP téléchargé — ouvrir avec ZArchiver et lancer le .apk';
+          return;
+        }
+      }catch(e){}
+    }
+
+    // Fallback: try to find latest artifact for this run
+    if(cfg?.runId){
+      if(btn) btn.textContent = '⏳ Recherche de l\'APK...';
+      try{
+        const artResp = await githubApi(`/actions/runs/${cfg.runId}/artifacts`, ghConfig);
+        if(artResp.ok){
+          const artData = await artResp.json();
+          const found = artData.artifacts?.[0];
+          if(found){
+            S.lastArtifact = found;
+            return downloadApkDirect(); // retry with stored artifact
+          }
+        }
+      }catch(e){}
+    }
+
+    // Final fallback: open GitHub page
+    if(btn) btn.textContent = '🐙 Ouvrir GitHub';
+    openLastRun();
+  }
+
+  // ════════════════════════════════
+  // PUSH HTML FILES → REPO POUR WEBVIEW
+  // ════════════════════════════════
+  async function pushWebViewFiles(ghConfig, files, term){
+    const branch = ghConfig.branch||'main';
+    termLine(term,'▶ Envoi des fichiers vers le dépôt GitHub...','i');
+
+    // Get HEAD
+    const refR = await githubApi(`/git/refs/heads/${branch}`, ghConfig);
+    if(!refR.ok) throw new Error('Branche introuvable: '+branch);
+    const refData = await refR.json();
+    const headSha = refData.object.sha;
+
+    const commitR = await githubApi(`/git/commits/${headSha}`, ghConfig);
+    const baseTree = (await commitR.json()).tree.sha;
+
+    // Create blobs for each file
+    const treeItems = [];
+    for(const [path, content] of Object.entries(files)){
+      if(!content) continue;
+      const b64 = btoa(unescape(encodeURIComponent(content)));
+      const blobR = await githubApi(`/git/blobs`, ghConfig, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ content: b64, encoding:'base64' })
+      });
+      if(!blobR.ok) continue;
+      const blob = await blobR.json();
+      treeItems.push({ path:`app/src/main/assets/www/${path}`, mode:'100644', type:'blob', sha:blob.sha });
+      termLine(term,`  ✓ ${path} (${Math.round(content.length/1024)}KB)`,'s');
+    }
+
+    if(!treeItems.length) throw new Error('Aucun fichier à envoyer');
+
+    // Create tree → commit → push
+    const treeR = await githubApi('/git/trees', ghConfig,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ base_tree:baseTree, tree:treeItems })
+    });
+    const tree = await treeR.json();
+
+    const newCommitR = await githubApi('/git/commits', ghConfig,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ message:'⚡ WebView update via PWA-APK by NPS.NELSON', tree:tree.sha, parents:[headSha] })
+    });
+    const newCommit = await newCommitR.json();
+
+    const pushR = await githubApi(`/git/refs/heads/${branch}`, ghConfig,{
+      method:'PATCH',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ sha:newCommit.sha, force:false })
+    });
+    if(!pushR.ok){
+      const err = await pushR.json().catch(()=>({}));
+      throw new Error('Push échoué: '+(err.message||pushR.status));
+    }
+    termLine(term,'✓ Fichiers envoyés dans app/src/main/assets/www/','s');
+  }
   
 </script>
 </body>
