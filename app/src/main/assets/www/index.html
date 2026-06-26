@@ -826,6 +826,23 @@ code{background:var(--s1);padding:2px 7px;border-radius:5px;font-family:var(--mo
 // ════════════════════════════════
 // STATE
 // ════════════════════════════════
+// ── Polyfills Android WebView (Chrome < 55) ──────────────────
+(function(){
+  if(!NodeList.prototype.forEach){NodeList.prototype.forEach=Array.prototype.forEach;}
+  if(!NodeList.prototype.map){NodeList.prototype.map=function(fn){return Array.prototype.map.call(this,fn);};}
+  if(!Object.entries){Object.entries=function(o){var a=[];for(var k in o){if(o.hasOwnProperty(k))a.push([k,o[k]]);}return a;};}
+  if(!Object.values){Object.values=function(o){var a=[];for(var k in o){if(o.hasOwnProperty(k))a.push(o[k]);}return a;};}
+  if(!Object.assign){Object.assign=function(t){for(var i=1;i<arguments.length;i++){var s=arguments[i];for(var k in s){if(s.hasOwnProperty(k))t[k]=s[k];}}return t;};}
+  if(!Element.prototype.closest){Element.prototype.closest=function(s){var el=this;while(el&&el.nodeType===1){if((el.matches||el.msMatchesSelector||el.webkitMatchesSelector).call(el,s))return el;el=el.parentElement;}return null;};}
+  if(!Array.from){Array.from=function(it){var a=[];for(var i=0;i<it.length;i++)a.push(it[i]);return a;};}
+  if(!String.prototype.startsWith){String.prototype.startsWith=function(s,p){return this.indexOf(s,p||0)===(p||0);};}
+  if(!String.prototype.endsWith){String.prototype.endsWith=function(s){return this.slice(-s.length)===s;};}
+  if(!String.prototype.includes){String.prototype.includes=function(s){return this.indexOf(s)!==-1;};}
+  if(!Array.prototype.includes){Array.prototype.includes=function(v){return this.indexOf(v)!==-1;};}
+  if(typeof Promise!=='undefined'&&!Promise.prototype.finally){Promise.prototype.finally=function(fn){return this.then(function(v){fn();return v;},function(e){fn();throw e;});};}
+})();
+// ── Fin polyfills ────────────────────────────────────────────────
+
 const S = {
   files: {},
   activeFile: null,
